@@ -1,5 +1,7 @@
 # Play Store listing copy
 
+**Pricing**: Paid — **$1.99 one-time** (set in Play Console at app creation; decided by Tj 2026-10-28. No in-app purchases — the $1.99 is the whole price.)
+
 **App name** (30 chars max): `Bubble Pop: Ad-Free for Kids`
 
 **Short description** (80 chars max):

@@ -50,11 +50,11 @@ bubblewrap build          # app-release-bundle.aab
 
 Then in Play Console:
 
-1. Upload the bundle. Under **Setup → App signing** copy the SHA-256 fingerprint.
-2. Add a `com.taugustincst.bubblepop` entry with that fingerprint (and your upload key's) to `.well-known/assetlinks.json` on the `taugustincst.github.io` site repo. Without it Chrome shows a URL bar inside the app.
+1. Create the app and upload the bundle (built as a bundled native app — the game files ship inside it, no TWA, so **no assetlinks.json entry is needed**; see the build notes in the release record).
+2. Enroll in Play App Signing with the upload key.
 3. Fill the listing from `store/listing.md`, upload `store/feature-graphic-1024x500.png` and the screenshots.
 4. Declare the target audience as children, complete the Data safety form as "no data collected", and the content rating questionnaire.
-5. Set the price. A Play app cannot switch from free to paid later.
+5. **Price: Paid, $1.99 one-time** (decided by Tj 2026-10-28). A Play app cannot switch from free to paid later, so set this at creation.
 6. Optional: apply to the Teacher Approved program after publishing.
 
-For updates to the game, pushing to `main` is enough. Rebuild the Android bundle (bump `appVersionCode` in `android/twa-manifest.json`) only when the wrapper or Play's target SDK requirement changes.
+For updates to the game on the web, pushing to `main` is enough. The Android app bundles its copy of the game, so app updates need a rebuilt bundle with a bumped `versionCode`.
