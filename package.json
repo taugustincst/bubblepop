@@ -1,0 +1,14 @@
+{
+  "name": "bubblepop",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Bubble Pop: a bright, ad-free popping game for little kids.",
+  "scripts": {
+    "serve": "python3 -m http.server 8777 --directory ..",
+    "test": "node tests/smoke.js http://localhost:8777/bubblepop/",
+    "assets": "node tools/make-assets.js http://localhost:8777/bubblepop/"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}

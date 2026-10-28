@@ -1,56 +1,60 @@
 # Bubble Pop
 
-The bubble popping game for little kids, originally built as a Claude artifact
-(https://claude.ai/artifact/KG3kJNdBH2cXagXVYdCTuF), now packaged as an installable,
-offline-capable web app for Google Play. Live at **https://taugustincst.github.io/bubblepop/**.
+A bright, ad-free popping game for little kids, published by AugustInnovations LLC.
+Live at **https://taugustincst.github.io/bubblepop/** as an installable, offline-capable web app, and packaged for Google Play as a Trusted Web Activity.
 
 ## The game
 
 - Pick your face from a tile of avatars; each player keeps a running total, a best round, and a spot on the family leaderboard
 - Pop bubbles, balloons and stars by tapping or by swiping a finger across them; multi-touch works
-- Three scenes rotate every 40 seconds: daytime clouds, under the sea, and a starry night, each with its own cast of animal faces and synthesized voices (croak, quack, moo, blub, hoot, and more)
-- A gentle background melody, a cheer and a confetti shower every 10 pops, and "New best!" at the end of a round
-- Hold-to-finish home button so a stray tap never ends the round; fullscreen with keyboard lock on desktops so the kid stays in the game
-- No ads, purchases, accounts, or analytics. Player names and scores live only on the device
+- Three scenes rotate every 40 seconds: daytime clouds, under the sea, and a starry night, each with its own animal faces and synthesized voices
+- A gentle background melody, a cheer and confetti shower every 10 pops, and "New best!" at the end of a round
+- Hold-to-finish home button so a stray tap never ends the round
+- No ads, purchases, accounts, analytics or network requests. Player names and scores live only on the device
 
-## What changed for release
+## Repository layout
 
-The artifact's code is untouched apart from four additions at the end of its script:
+| Path | What |
+|---|---|
+| `index.html` | The whole game: markup, styles and script in one file |
+| `sw.js`, `manifest.webmanifest` | Offline app shell and install metadata |
+| `fonts/` | Fredoka (SIL Open Font License), self-hosted so the game makes no third-party requests |
+| `icons/` | App icons and the PWA screenshot |
+| `store/` | Play Store listing copy, feature graphic and phone screenshots |
+| `android/` | Bubblewrap configuration for the Play Store build |
+| `tests/smoke.js` | Headless end-to-end check |
+| `tools/make-assets.js` | Regenerates icons, feature graphic and screenshots from the game itself |
+| `.github/workflows/pages.yml` | Deploys `main` to GitHub Pages |
 
-1. A proper document head with the web app manifest, icons and theme color, and the `[hidden]` rule the artifact host used to supply
-2. Service worker registration (`sw.js`) so the game loads offline after the first visit
-3. Android back button support: Back ends the current round instead of closing the app
-4. A small `window.__bubblepop` test hook used by the automated checks
-5. A CSS rule letting the add-player form scroll: it is taller than small or landscape phone screens, which clipped the name field
+## Development
 
-The shared cross-device leaderboard only works when the page runs inside the Claude artifact host.
-In the Play app the code falls back to device-only storage automatically and labels the board "this device only".
+No build step. Serve the parent folder so the game runs under `/bubblepop/`, matching production:
+
+```bash
+npm install            # playwright, for tests and assets only
+npm run serve          # http://localhost:8777/bubblepop/
+npm test               # headless smoke test
+npm run assets         # regenerate icons and store assets
+```
+
+After changing game files, bump `VERSION` in `sw.js` so cached players refresh.
 
 ## Publishing to Google Play
 
-Same Trusted Web Activity (TWA) flow as Ironhold and Elderon. Bubblewrap config: `android/twa-manifest.json`
-(package `com.taugustincst.bubblepop`).
-
 ```bash
 npm i -g @bubblewrap/cli
-cd bubblepop/android
+cd android
 bubblewrap init --manifest https://taugustincst.github.io/bubblepop/manifest.webmanifest
-bubblewrap build          # produces app-release-bundle.aab
+bubblewrap build          # app-release-bundle.aab
 ```
 
-After the first upload, add a `com.taugustincst.bubblepop` entry with the Play App Signing SHA-256 fingerprint
-(and your upload key's fingerprint) to `/.well-known/assetlinks.json`, next to the Elderon entry.
+Then in Play Console:
 
-### Play Console checklist for a kids' app
+1. Upload the bundle. Under **Setup → App signing** copy the SHA-256 fingerprint.
+2. Add a `com.taugustincst.bubblepop` entry with that fingerprint (and your upload key's) to `.well-known/assetlinks.json` on the `taugustincst.github.io` site repo. Without it Chrome shows a URL bar inside the app.
+3. Fill the listing from `store/listing.md`, upload `store/feature-graphic-1024x500.png` and the screenshots.
+4. Declare the target audience as children, complete the Data safety form as "no data collected", and the content rating questionnaire.
+5. Set the price. A Play app cannot switch from free to paid later.
+6. Optional: apply to the Teacher Approved program after publishing.
 
-- **Target audience**: declare the app is designed for children. This enrolls it in the Families policy, which it meets: no ads, no external links, no data collection.
-- **Privacy policy URL**: `https://taugustincst.github.io/bubblepop/privacy.html`.
-- **Data safety form**: "No data collected", "No data shared".
-- **Content rating**: IARC questionnaire, expect "Everyone".
-- **Pricing**: Play apps cannot switch from free to paid later. Decide before publishing.
-- **Store assets**: 512×512 icon (`icons/icon-512.png`), a 1024×500 feature graphic, and phone screenshots (`icons/screenshot-portrait.png` is one; capture a few more showing the sea and night scenes and the leaderboard).
-
-### Updates
-
-Push to this repo to update the game and bump `VERSION` in `sw.js` so cached players refresh.
-Rebuild the Android bundle (bump `appVersionCode`) only when the wrapper or Play's target SDK requirement changes.
+For updates to the game, pushing to `main` is enough. Rebuild the Android bundle (bump `appVersionCode` in `android/twa-manifest.json`) only when the wrapper or Play's target SDK requirement changes.
