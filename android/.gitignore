@@ -1,0 +1,9 @@
+# Never commit signing material or build output
+*.keystore
+*.jks
+*.aab
+*.apk
+app/
+gradle/
+build/
+.gradle/
