@@ -1,0 +1,25 @@
+name: CI
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    name: Smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Serve the game and run the smoke test
+        run: |
+          python3 -m http.server 8777 --directory .. >/dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8777/bubblepop/ >/dev/null && break; sleep 1; done
+          npm test
