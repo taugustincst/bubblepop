@@ -323,9 +323,9 @@ function finish(stop) {
   // 15. Remove deletes the player.
   await tap('#manage', 'Edit players (to remove)');
   await tap('#players .tile:not(.add)', 'Player tile (to remove)');
-  adb('shell', 'input', 'keyevent', '111');
+  check('Remove button is offered', await waitFor(`${shown('addPanel')}&&!!document.getElementById('deleteBtn')`));
+  check('editing a player does not pop up the keyboard', await waitFor(`document.activeElement!==document.getElementById('nameIn')`, 1000));
   await sleep(500);
-  check('Remove button is offered', await waitFor(`!!document.getElementById('deleteBtn')`));
   await tap('#deleteBtn', 'Remove');
   if (!check('Remove deletes the player', await waitFor(`window.__bubblepop.players.length===0&&${hidden('addPanel')}`))) {
     console.log('  state: ' + JSON.stringify(await js(`({players:window.__bubblepop.players.length,panel:!document.getElementById('addPanel').hidden,innerHeight:innerHeight,active:document.activeElement&&document.activeElement.id})`)));

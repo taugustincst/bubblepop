@@ -256,7 +256,7 @@ function openPanel(p){
   if(p){var d=document.createElement('button');d.className='btn quiet';d.type='button';d.id='deleteBtn';d.textContent='Remove';
     d.style.background='#ffd9d9';d.addEventListener('click',function(){removePlayer(p);closePanel();renderMenu()});
     $('addForm').querySelector('.row').appendChild(d)}
-  addPanel.hidden=false;setTimeout(function(){$('nameIn').focus()},50);
+  addPanel.hidden=false;if(!p)setTimeout(function(){$('nameIn').focus()},50);
 }
 function closePanel(){addPanel.hidden=true;editing=null}
 $('cancelBtn').addEventListener('click',closePanel);
