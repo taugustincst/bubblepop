@@ -1,6 +1,7 @@
 package com.taugustincst.bubblepop;
 
 import android.app.Activity;
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -47,6 +48,13 @@ public class MainActivity extends Activity {
                 .setDomain("appassets.androidplatform.net")
                 .addPathHandler("/", new WebViewAssetLoader.AssetsPathHandler(this))
                 .build();
+
+        // Debug builds only (never the Play build, which is not debuggable):
+        // lets the emulator tap-through test read the page's layout and state
+        // over DevTools while it drives the app with real taps.
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
 
         webView = new WebView(this);
         // Forward the page's console to logcat: the emulator launch test
