@@ -25,7 +25,7 @@ if (!APK) { console.error('usage: node tools/tap-through.js <debug-apk> [package
 fs.mkdirSync(OUT, { recursive: true });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const adb = (...a) => execFileSync('adb', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+const adb = (...a) => execFileSync('adb', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 << 20 }).trim();
 let shotN = 0;
 const shot = name => {
   const f = path.join(OUT, String(++shotN).padStart(2, '0') + '-' + name + '.png');
@@ -106,9 +106,21 @@ async function measure(sel) {
   })()`);
 }
 const toScreen = (cx, cy) => [Math.round(cx * dpr + offX), Math.round(cy * dpr + offY)];
+// Wait for the layout to settle (the soft keyboard opening or closing
+// resizes the page), so the tap lands where the element really is.
+async function measureSettled(sel) {
+  let m = await measure(sel);
+  for (let i = 0; i < 12 && !m.missing; i++) {
+    await sleep(250);
+    const n = await measure(sel);
+    if (n.missing || (Math.abs(n.cx - m.cx) < 1 && Math.abs(n.cy - m.cy) < 1)) return n;
+    m = n;
+  }
+  return m;
+}
 async function tap(sel, label) {
   await sleep(150);
-  const m = await measure(sel);
+  const m = await measureSettled(sel);
   if (m.missing) return check(`${label}: on screen`, false, `${sel} not in the page`);
   if (!check(`${label}: visible and not covered`, m.visible && m.onTop, JSON.stringify(m))) return false;
   const [x, y] = toScreen(m.cx, m.cy);
@@ -116,7 +128,7 @@ async function tap(sel, label) {
   return true;
 }
 async function longPress(sel, ms) {
-  const m = await measure(sel);
+  const m = await measureSettled(sel);
   const [x, y] = toScreen(m.cx, m.cy);
   adb('shell', 'input', 'swipe', String(x), String(y), String(x), String(y), String(ms));
 }
@@ -315,7 +327,9 @@ function finish(stop) {
   await sleep(500);
   check('Remove button is offered', await waitFor(`!!document.getElementById('deleteBtn')`));
   await tap('#deleteBtn', 'Remove');
-  check('Remove deletes the player', await waitFor(`window.__bubblepop.players.length===0&&${hidden('addPanel')}`));
+  if (!check('Remove deletes the player', await waitFor(`window.__bubblepop.players.length===0&&${hidden('addPanel')}`))) {
+    console.log('  state: ' + JSON.stringify(await js(`({players:window.__bubblepop.players.length,panel:!document.getElementById('addPanel').hidden,innerHeight:innerHeight,active:document.activeElement&&document.activeElement.id})`)));
+  }
   shot('removed');
 
   // Wrap-up: no crash, no ANR, no page errors.
