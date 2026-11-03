@@ -2,7 +2,7 @@
 
 **Pricing**: Paid — **$1.99 one-time** (set in Play Console at app creation; decided by Tj 2026-10-28. No in-app purchases — the $1.99 is the whole price.)
 
-**App name** (30 chars max): `Bubble Pop: Ad-Free for Kids`
+**App name** (30 chars max): `Bubble Pop for Kids`
 
 **Short description** (80 chars max):
 `Pop bubbles, balloons and stars. No ads, no purchases, no internet. Ages 1 to 5.`

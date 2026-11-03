@@ -19,7 +19,9 @@ const check = (name, ok, extra = '') => { console.log((ok ? 'PASS ' : 'FAIL ') +
   for (let i = 0; i < 10; i++) { const bb = await p.evaluate(() => { const l = window.__bubblepop.bubbles.filter(x => !x.pop && x.y > 90 && x.y < 600); return l.length ? { x: l[0].x, y: l[0].y } : null; }); if (bb) { taps++; await p.touchscreen.tap(bb.x, bb.y); } await p.waitForTimeout(200); }
   const pops = await p.evaluate(() => window.__bubblepop.round);
   check('taps pop bubbles', taps > 0 && pops >= taps * 0.8, `${pops}/${taps}`);
-  await p.mouse.move(42, 42); await p.mouse.down(); await p.waitForTimeout(300); await p.mouse.up(); await p.waitForTimeout(100);
+  await p.mouse.move(42, 42); await p.mouse.down(); await p.waitForTimeout(120);
+  check('tap on home immediately shows the hold prompt', !(await p.isHidden('#holdTip')));
+  await p.waitForTimeout(180); await p.mouse.up(); await p.waitForTimeout(100);
   check('short press on home does not end round', await p.evaluate(() => window.__bubblepop.playing));
   await p.mouse.down(); await p.waitForTimeout(1500); await p.mouse.up(); await p.waitForTimeout(400);
   check('long press ends round and shows summary', !(await p.evaluate(() => window.__bubblepop.playing)) && !(await p.isHidden('#done')));
