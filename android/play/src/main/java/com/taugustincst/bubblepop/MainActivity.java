@@ -5,8 +5,6 @@ import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
 import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -15,6 +13,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.WebViewAssetLoader;
 
 /**
@@ -92,12 +93,15 @@ public class MainActivity extends Activity {
     }
 
     private void enterImmersiveMode() {
-        WindowInsetsController controller = getWindow().getInsetsController();
-        if (controller != null) {
-            controller.hide(WindowInsets.Type.systemBars());
-            controller.setSystemBarsBehavior(
-                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-        }
+        // Window.getInsetsController() only exists from Android 11 (API 30),
+        // and minSdk is 24: on Android 7 to 10 it threw NoSuchMethodError at
+        // launch. The AndroidX compat controller does the same on every
+        // version.
+        WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        controller.hide(WindowInsetsCompat.Type.systemBars());
+        controller.setSystemBarsBehavior(
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
     }
 
     @Override

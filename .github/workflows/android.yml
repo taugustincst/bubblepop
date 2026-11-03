@@ -56,10 +56,21 @@ jobs:
           path: android/play/build/outputs/apk/debug/play-debug.apk
 
   launch:
-    name: Open it on an emulator
+    name: Open it on Android ${{ matrix.android }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Android 9 as well as 14: minSdk is 24, and a call that only exists from
+    # Android 11 crashed the app at launch on older phones while the Android
+    # 14 run passed.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - android: '9'
+            api: 28
+          - android: '14'
+            api: 34
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -74,10 +85,10 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Launch on Android 14
+      - name: Launch on Android ${{ matrix.android }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: ${{ matrix.api }}
           target: google_apis
           arch: x86_64
           disable-animations: true
@@ -86,7 +97,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: launch-test
+          name: launch-test-android-${{ matrix.android }}
           path: launch-test/
           if-no-files-found: ignore
 
