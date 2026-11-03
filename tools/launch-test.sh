@@ -59,22 +59,30 @@ else
 fi
 
 # --- best-effort flow: add a player, play, exercise the home button -------
-tap_node() { # tap_node <text-or-content-desc>
-  local want="$1" dump bounds xy x1 y1 x2 y2
+tap_node() { # tap_node <text-or-content-desc>; taps are clamped on-screen
+  local want="$1" dump bounds xy x1 y1 x2 y2 cx cy sh
   dump=$(adb shell uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1; adb exec-out cat /sdcard/window_dump.xml 2>/dev/null)
   bounds=$(printf '%s' "$dump" | grep -oE "(text|content-desc)=\"$want\"[^>]*bounds=\"\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]\"" | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' | head -1)
   if [ -z "$bounds" ]; then note "node not found (skipping tap): $want"; return 1; fi
   xy=$(printf '%s' "$bounds" | tr -d '[]' | tr ',' ' ')
   read -r x1 y1 x2 y2 <<< "$xy"
-  adb shell input tap $(( (x1 + x2) / 2 )) $(( (y1 + y2) / 2 ))
+  sh=$(adb shell wm size | grep -oE '[0-9]+$' | head -1)
+  cx=$(( (x1 + x2) / 2 )); cy=$(( (y1 + y2) / 2 ))
+  if [ -n "$sh" ] && [ "$cy" -ge "$sh" ]; then cy=$(( sh - 40 )); fi
+  adb shell input tap "$cx" "$cy"
   sleep 1
 }
 shot() { adb exec-out screencap -p > "$OUT/$1" || true; }
 
-tap_node "Who is playing?" || adb shell input tap 540 960   # name input (placeholder or centre fallback)
+tap_node "Who is playing?" || note "name input node not found"
+sleep 1
 adb shell input text Mia
-tap_node "🐱" || note "avatar tap skipped"
+sleep 1
 shot 02-player-form.png
+# The form is taller than the screen (it scrolls): bring Save fully into
+# view before tapping it. The first avatar stays selected, which is fine.
+adb shell input swipe 160 500 160 250 300
+sleep 1
 tap_node "Save" || note "save tap skipped"
 sleep 1
 shot 03-menu.png
