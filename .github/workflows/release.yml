@@ -1,0 +1,102 @@
+name: Release (Play bundle)
+# Builds the Play edition's bundle (android/play) and attaches it to a GitHub
+# Release, ready to upload in the Play Console. Run it from the Actions tab
+# with a version number. The bundle is signed with the listing's upload key
+# when the repository holds it in its secrets:
+#   ANDROID_UPLOAD_KEYSTORE        base64 of the keystore file (base64 -w0 file)
+#   ANDROID_UPLOAD_STORE_PASSWORD  its password
+#   ANDROID_UPLOAD_KEY_ALIAS       the key alias
+#   ANDROID_UPLOAD_KEY_PASSWORD    the key's password
+# Without them the bundle is built and checked but not attached, since a
+# debug-signed bundle is nothing Play would take.
+#
+# versionCode: Play has seen vc1 for this app, so every upload must be 2 or
+# higher. Pass version_code explicitly (1.0.1 -> 2); the fallback derivation
+# (1.0.1 -> 10001) is also safely above it.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name, e.g. 1.0.1 (the tag becomes play-v<version>)'
+        required: true
+        type: string
+        default: '1.0.1'
+      version_code:
+        description: 'Android versionCode. Must exceed the last uploaded code (vc1 for the first fix release: pass 2). Default: from the version, 1.0.1 -> 10001.'
+        required: false
+        type: string
+        default: ''
+permissions:
+  contents: write
+env:
+  ANDROID_UPLOAD_KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+jobs:
+  release:
+    name: Build, check and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Work out the version
+        id: ver
+        run: |
+          V="${{ inputs.version }}"
+          CODE="${{ inputs.version_code }}"
+          if [ -z "$CODE" ]; then
+            IFS=. read -r MA MI PA <<< "$V"
+            MA="${MA%%[^0-9]*}"; MI="${MI%%[^0-9]*}"; PA="${PA%%[^0-9]*}"
+            CODE=$(( ${MA:-0} * 10000 + ${MI:-0} * 100 + ${PA:-0} ))
+          fi
+          echo "name=$V" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "version $V, versionCode $CODE"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: 'gradle'
+      - name: Install the SDK platform and build-tools
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME" -name sdkmanager -type f | sort -V | tail -1)"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      - name: Set up the Play upload key
+        if: env.ANDROID_UPLOAD_KEYSTORE != ''
+        working-directory: android
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_UPLOAD_KEYSTORE" | base64 -d > upload.jks
+          {
+            echo "storeFile=upload.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+      - name: Build the release APK and bundle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew :play:assembleRelease :play:bundleRelease --no-daemon \
+            -PversionCode=${{ steps.ver.outputs.code }} \
+            -PversionName=${{ steps.ver.outputs.name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The bundle's own APK, checked the way a phone loads it.
+      - name: Check the build would load
+        run: node tools/check-apk.js android/play/build/outputs/apk/release/play-release.apk --package com.taugustincst.bubblepop
+      - name: Publish the release
+        if: env.ANDROID_UPLOAD_KEYSTORE != ''
+        run: |
+          cp android/play/build/outputs/bundle/release/play-release.aab "bubble-pop-${{ steps.ver.outputs.name }}-play.aab"
+          gh release create "play-v${{ steps.ver.outputs.name }}" "bubble-pop-${{ steps.ver.outputs.name }}-play.aab" \
+            --target "$GITHUB_SHA" --title "Bubble Pop ${{ steps.ver.outputs.name }} (Play)" \
+            --notes "Google Play bundle, versionCode ${{ steps.ver.outputs.code }}, signed with the upload key from the repository's secrets and checked by tools/check-apk.js. Upload the .aab in the Play Console."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Say why nothing was attached
+        if: env.ANDROID_UPLOAD_KEYSTORE == ''
+        run: echo "No upload key in the repository secrets, so the bundle was built and checked but not published. Add the four ANDROID_UPLOAD_* secrets, or build locally with android/keystore.properties."

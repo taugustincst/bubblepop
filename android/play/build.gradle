@@ -1,0 +1,102 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The Google Play edition of Bubble Pop: a single full-screen WebView that
+// plays the game entirely from packaged assets (WebViewAssetLoader serves
+// assets/www over a synthetic https origin, so localStorage behaves like a
+// normal secure origin). The app declares no INTERNET permission and the
+// game makes zero network calls.
+//
+// This project replaces the hand-built bundle pipeline (a local script
+// chaining aapt2 -> javac -> d8 -> bundletool) whose vc1 Play rejected on
+// 3 Nov 2026 under Broken Functionality: the reviewer's screenshot showed
+// the WebView error page ("Web page not available —
+// net::ERR_INVALID_RESPONSE") for the app's own asset URL, so the game never
+// loaded. This module is built by CI with the standard Gradle toolchain, and
+// every build is emulator-tested — the game must actually render, not just
+// launch — before it can be uploaded. Same shape as the Ironhold and
+// Elderon Play editions, which pass review.
+
+// Release signing: the upload key from android/keystore.properties when it
+// exists (never committed; the Release workflow writes it from the repo's
+// ANDROID_UPLOAD_* secrets), the debug key otherwise. Play only takes a
+// bundle signed with the listing's upload key.
+def keystoreFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystoreFile.exists()) {
+    keystoreFile.withInputStream { keystoreProps.load(it) }
+}
+
+// Every Play upload needs a higher versionCode than any earlier one. vc1 is
+// the only earlier upload, so this release is versionCode 2; the Release
+// workflow passes -PversionCode/-PversionName explicitly.
+def relVersionCode = (project.hasProperty('versionCode') ? project.property('versionCode') : '2').toString().toInteger()
+def relVersionName = (project.hasProperty('versionName') ? project.property('versionName') : '1.0.1').toString()
+
+// The game's web files live at the repository root (they are also the
+// GitHub Pages site). They are copied into the app's assets as
+// assets/www/... — the exact layout MainActivity's WebViewAssetLoader
+// serves — at build time, so the bundle can never drift from the web build
+// and no second copy of the game is checked in.
+def webRoot = rootProject.file('..')
+def genAssetsDir = new File(buildDir, 'generated/webAssets')
+tasks.register('syncWebAssets', Copy) {
+    from(webRoot) {
+        include 'index.html', 'sw.js', 'manifest.webmanifest', 'privacy.html', 'fonts/**', 'icons/**'
+    }
+    into(new File(genAssetsDir, 'www'))
+}
+
+android {
+    // The package name is the app's identity on Google Play: the listing was
+    // created under it, and Play never lets it change.
+    namespace 'com.taugustincst.bubblepop'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.taugustincst.bubblepop'
+        minSdk 24
+        targetSdk 36
+        versionCode relVersionCode
+        versionName relVersionName
+    }
+
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            release {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Nothing worth shrinking, and shrinking is one more way for a
+            // class the manifest names to go missing from the dex.
+            minifyEnabled false
+            shrinkResources false
+            signingConfig keystoreFile.exists() ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += genAssetsDir
+        }
+    }
+}
+
+tasks.getByName('preBuild').dependsOn('syncWebAssets')
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
