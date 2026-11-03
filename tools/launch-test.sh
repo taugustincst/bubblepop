@@ -49,9 +49,16 @@ grep -q "BUBBLEPOP_READY" "$OUT/logcat.txt" || fail "the game's page never ran (
 # The error page is a near-uniform white page; the game is a full-screen
 # colourful scene. Threshold the screenshot at 98% grey: the error page
 # measures 95.9% near-white, so fail above 75%.
+# The emulator's software GPU sometimes hands back a blank all-white frame
+# for a screencap, so re-take it a few times before judging the screen.
 if command -v convert >/dev/null 2>&1; then
-  WHITE=$(convert "$OUT/01-first-screen.png" -colorspace Gray -threshold 98% -format '%[fx:mean]' info:)
-  note "first screenshot near-white fraction: $WHITE"
+  for try in 1 2 3 4 5 6; do
+    WHITE=$(convert "$OUT/01-first-screen.png" -colorspace Gray -threshold 98% -format '%[fx:mean]' info: 2>/dev/null || echo 1)
+    note "first screenshot near-white fraction: $WHITE (try $try)"
+    python3 -c "import sys; sys.exit(0 if float('$WHITE') <= 0.75 else 1)" && break
+    sleep 4
+    adb exec-out screencap -p > "$OUT/01-first-screen.png" || true
+  done
   python3 -c "import sys; sys.exit(0 if float('$WHITE') <= 0.75 else 1)" \
     || fail "first screenshot looks like the WebView error page (near-white fraction $WHITE)"
 else
