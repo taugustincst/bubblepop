@@ -299,7 +299,7 @@ document.addEventListener('keydown',function(e){
   if(playing){e.preventDefault();e.stopPropagation()}
 },true);
 function endRound(){
-  playing=false;hud.hidden=true;
+  playing=false;hud.hidden=true;hideTip();
   var rec=false;
   if(current){
     current.rounds=(current.rounds||0)+1;
@@ -316,10 +316,13 @@ done.addEventListener('click',function(){if(done.hidden)return;done.hidden=true;
 function scored(){round++;$('scoreN').textContent=round;if(current){current.total=(current.total||0)+1;cache();markDirty(current)}}
 
 /* hold-to-finish button: 1.2 s hold so a stray tap does nothing */
-var home=$('home'),holdTip=$('holdTip'),holdT=null,holdStart=0;
-function holdTick(){var p=Math.min(1,(performance.now()-holdStart)/1200);home.style.setProperty('--p',(p*100)+'%');if(p>=1){stopHold();endRound()}}
-function stopHold(){if(holdT)clearInterval(holdT);holdT=null;home.style.setProperty('--p','0%');holdTip.hidden=true}
-home.addEventListener('pointerdown',function(e){e.preventDefault();if(!playing)return;stopHold();holdTip.hidden=false;home.style.setProperty('--p','8%');holdStart=performance.now();holdT=setInterval(holdTick,30)});
+var home=$('home'),holdTip=$('holdTip'),holdT=null,holdStart=0,tipT=null;
+function holdTick(){var p=Math.min(1,(performance.now()-holdStart)/1200);home.style.setProperty('--p',(p*100)+'%');if(p>=1){stopHold();hideTip();endRound()}}
+function hideTip(){clearTimeout(tipT);tipT=null;holdTip.hidden=true}
+/* A short tap must visibly answer: the ring resets, but the "Keep holding" prompt stays up for 2 s
+   (a reviewer's quick tap otherwise saw the prompt flash for a frame and called the button unresponsive). */
+function stopHold(){if(holdT)clearInterval(holdT);holdT=null;home.style.setProperty('--p','0%');if(!holdTip.hidden){clearTimeout(tipT);tipT=setTimeout(hideTip,2000)}}
+home.addEventListener('pointerdown',function(e){e.preventDefault();if(!playing)return;stopHold();clearTimeout(tipT);tipT=null;holdTip.hidden=false;home.style.setProperty('--p','8%');holdStart=performance.now();holdT=setInterval(holdTick,30)});
 ['pointerup','pointercancel','pointerleave'].forEach(function(ev){home.addEventListener(ev,stopHold)});
 home.addEventListener('contextmenu',function(e){e.preventDefault()});
 
