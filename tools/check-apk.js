@@ -130,13 +130,17 @@ function main() {
     // links to must be in the assets, or the page loads with holes in it. A
     // Trusted Web Activity carries no page: it opens the site.
     const entries = new Set(run('unzip', ['-Z1', apk]).split('\n').filter(Boolean));
-    if (entries.has('assets/index.html')) {
-      const wanted = ['assets/index.html'];
-      const html = run('unzip', ['-p', apk, 'assets/index.html']);
+    // A bundled game can sit at assets/index.html or, when the app serves a
+    // folder through WebViewAssetLoader (Bubble Pop), assets/www/index.html.
+    const assetRoot = entries.has('assets/index.html') ? 'assets/'
+      : entries.has('assets/www/index.html') ? 'assets/www/' : null;
+    if (assetRoot) {
+      const wanted = [assetRoot + 'index.html'];
+      const html = run('unzip', ['-p', apk, assetRoot + 'index.html']);
       for (const m of html.matchAll(/<(?:script|link)\b[^>]*\b(?:src|href)="([^"#?]+)"/g)) {
         const ref = m[1];
         if (/^(?:https?:|data:|\/\/)/.test(ref) || ref === 'sw.js') continue; // sw.js is left out on purpose
-        wanted.push('assets/' + ref.replace(/^\.\//, ''));
+        wanted.push(assetRoot + ref.replace(/^\.\//, ''));
       }
       let present = 0;
       for (const w of wanted) {
