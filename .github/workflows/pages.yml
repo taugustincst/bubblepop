@@ -1,31 +1,53 @@
-name: Deploy to GitHub Pages
+name: Deploy the store page to Pages
+# The game is a paid app on Google Play, so the site no longer serves the
+# playable game. It publishes only the store page (site/index.html), the
+# privacy policy the Play listing links to, the store graphics, and a
+# service worker that removes old offline copies of the game from browsers
+# that installed one.
+
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   test:
     uses: ./.github/workflows/ci.yml
   deploy:
     needs: test
-    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Assemble the store page
+        run: |
+          mkdir -p _site/img
+          cp site/index.html site/sw.js privacy.html _site/
+          cp store/*.png _site/img/
+          cp icons/icon-192.png icons/icon-512.png _site/img/
+          touch _site/.nojekyll
+          # Nothing playable may be published.
+          if grep -q 'getContext' _site/index.html; then
+            echo "the store page must not carry the game"; exit 1
+          fi
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - id: deployment
+          path: '_site'
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
