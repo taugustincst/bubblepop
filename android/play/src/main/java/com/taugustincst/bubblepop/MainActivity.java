@@ -2,9 +2,12 @@ package com.taugustincst.bubblepop;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -31,12 +34,32 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // The path handler is registered at "/", NOT at "/www/":
+        // WebViewAssetLoader hands the handler the path *after* the
+        // registered prefix (its "suffix path"), and AssetsPathHandler opens
+        // that suffix as the asset path. Registering "/www/" made it open
+        // "index.html" — assets/index.html, which does not exist — and the
+        // handler's error path returns an empty response, which the WebView
+        // reports as ERR_INVALID_RESPONSE: the game never loaded, and Play
+        // rejected vc1 for it on 3 Nov 2026. At "/", the suffix of
+        // /www/index.html is "www/index.html", the asset that exists.
         final WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
                 .setDomain("appassets.androidplatform.net")
-                .addPathHandler("/www/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .addPathHandler("/", new WebViewAssetLoader.AssetsPathHandler(this))
                 .build();
 
         webView = new WebView(this);
+        // Forward the page's console to logcat: the emulator launch test
+        // greps for the game's BUBBLEPOP_READY line as proof the page loaded
+        // and its script ran, and the same lines help diagnose field issues.
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage msg) {
+                Log.i("BubblePopWeb", msg.message()
+                        + " (" + msg.sourceId() + ":" + msg.lineNumber() + ")");
+                return true;
+            }
+        });
         webView.setWebViewClient(new WebViewClient() {
             
             @Override

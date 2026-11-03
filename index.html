@@ -636,6 +636,9 @@ var _endRound=endRound;endRound=function(){_endRound();if(pushedRound){pushedRou
 window.addEventListener('popstate',function(){if(playing){pushedRound=false;_endRound()}else pushedRound=false});
 if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});
 window.__bubblepop={setScene:function(i){prevScene=scene;sceneIx=i%SCENES.length;scene=SCENES[sceneIx];fade=0;sceneTimer=0;makeDecor()},get players(){return players},get bubbles(){return bubbles},get round(){return round},get playing(){return playing},popBubble:popBubble,startRound:function(p){startRound(p)},endRound:function(){endRound()}};
+/* The Android wrapper forwards console lines to logcat; the emulator launch
+   test greps for this as proof the page loaded and its script ran. */
+console.log('BUBBLEPOP_READY');
 })();
 </script>
 

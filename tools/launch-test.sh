@@ -38,20 +38,22 @@ if grep -A2 "FATAL EXCEPTION" "$OUT/logcat.txt" | grep -q "Process: $PKG"; then
 fi
 grep -q "ANR in $PKG" "$OUT/logcat.txt" && fail "$PKG stopped responding at launch"
 grep -q "ERR_INVALID_RESPONSE" "$OUT/logcat.txt" && fail "WebView reported ERR_INVALID_RESPONSE (the vc1 failure)"
+# The asset loader's own error line is the decisive vc1 signal: it is what
+# the handler logs right before returning the empty response the WebView
+# shows as ERR_INVALID_RESPONSE.
+grep -q "Error opening asset path" "$OUT/logcat.txt" && fail "WebViewAssetLoader could not open a packaged asset (the vc1 root cause)"
+# The game logs this once its page has loaded and its script has run (the
+# wrapper forwards console lines to logcat). No line, no game.
+grep -q "BUBBLEPOP_READY" "$OUT/logcat.txt" || fail "the game's page never ran (no BUBBLEPOP_READY in logcat)"
 
 # The error page is a near-uniform white page; the game is a full-screen
-# colourful scene. Fail if the first screenshot looks like the error page.
+# colourful scene. Threshold the screenshot at 98% grey: the error page
+# measures 95.9% near-white, so fail above 75%.
 if command -v convert >/dev/null 2>&1; then
-  python3 - "$OUT/01-first-screen.png" <<'PYEOF' || fail "first screenshot looks like the WebView error page (near-uniform white)"
-import subprocess, sys
-img = sys.argv[1]
-def stat(fmt):
-    return float(subprocess.check_output(['convert', img, '-colorspace', 'Gray', '-format', fmt, 'info:']).decode())
-mean = stat('%[fx:mean]')
-std = stat('%[fx:standard_deviation]')
-print(f"launch-test: first screenshot mean={mean:.3f} std={std:.3f}")
-sys.exit(0 if not (mean > 0.93 and std < 0.06) else 1)
-PYEOF
+  WHITE=$(convert "$OUT/01-first-screen.png" -colorspace Gray -threshold 98% -format '%[fx:mean]' info:)
+  note "first screenshot near-white fraction: $WHITE"
+  python3 -c "import sys; sys.exit(0 if float('$WHITE') <= 0.75 else 1)" \
+    || fail "first screenshot looks like the WebView error page (near-white fraction $WHITE)"
 else
   note "ImageMagick not present; skipping the pixel check (screenshots are still saved for review)"
 fi
