@@ -74,9 +74,21 @@ tap_node() { # tap_node <text-or-content-desc>; taps are clamped on-screen
 }
 shot() { adb exec-out screencap -p > "$OUT/$1" || true; }
 
-tap_node "Who is playing?" || note "name input node not found"
-sleep 1
-adb shell input text Mia
+# Focus the name field by its widget class (its placeholder is not a
+# reliable accessibility label), then type with key events: 'input text'
+# raced the IME and lost characters in earlier runs. Name: mia.
+dump=$(adb shell uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1; adb exec-out cat /sdcard/window_dump.xml 2>/dev/null)
+bounds=$(printf '%s' "$dump" | grep -oE 'class="android\.widget\.EditText"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' | head -1)
+if [ -n "$bounds" ]; then
+  xy=$(printf '%s' "$bounds" | tr -d '[]' | tr ',' ' ')
+  read -r x1 y1 x2 y2 <<< "$xy"
+  adb shell input tap $(( (x1 + x2) / 2 )) $(( (y1 + y2) / 2 ))
+else
+  note "EditText node not found; tapping the form's upper area"
+  adb shell input tap 160 170
+fi
+sleep 2
+adb shell input keyevent 41 37 29
 sleep 1
 shot 02-player-form.png
 # The form is taller than the screen (it scrolls): bring Save fully into
@@ -86,7 +98,7 @@ sleep 1
 tap_node "Save" || note "save tap skipped"
 sleep 1
 shot 03-menu.png
-tap_node "Mia" || note "player tile tap skipped"
+tap_node "mia" || note "player tile tap skipped"
 sleep 2
 shot 04-round.png
 # One tap on the home button: the "Hold to finish" prompt must appear and
