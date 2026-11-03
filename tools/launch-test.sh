@@ -91,6 +91,10 @@ sleep 2
 adb shell input keyevent 41 37 29
 sleep 1
 shot 02-player-form.png
+# Dismiss the soft keyboard first: it covers the panel's lower half, and a
+# scroll swipe that starts on it types gesture text into the field instead.
+adb shell input keyevent 111
+sleep 1
 # The form is taller than the screen (it scrolls): bring Save fully into
 # view before tapping it. The first avatar stays selected, which is fine.
 adb shell input swipe 160 500 160 250 300
