@@ -1,4 +1,4 @@
-package com.taugustincst.bubblepop;
+package com.taugustincst.bubblepopkids;
 
 import android.app.Activity;
 import android.content.pm.ApplicationInfo;

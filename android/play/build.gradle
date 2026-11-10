@@ -49,13 +49,16 @@ tasks.register('syncWebAssets', Copy) {
 }
 
 android {
-    // The package name is the app's identity on Google Play: the listing was
+    // Fresh Play entry (Nov 10, 2026): the original listing's registered creation
+    // name carried promotional wording Play's automated check kept rejecting;
+    // this entry is created clean. The package name is the app's identity on
+    // Google Play: the listing was
     // created under it, and Play never lets it change.
-    namespace 'com.taugustincst.bubblepop'
+    namespace 'com.taugustincst.bubblepopkids'
     compileSdk 36
 
     defaultConfig {
-        applicationId 'com.taugustincst.bubblepop'
+        applicationId 'com.taugustincst.bubblepopkids'
         minSdk 24
         targetSdk 36
         versionCode relVersionCode
