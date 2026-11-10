@@ -87,7 +87,7 @@ jobs:
           node-version: 22
       # The bundle's own APK, checked the way a phone loads it.
       - name: Check the build would load
-        run: node tools/check-apk.js android/play/build/outputs/apk/release/play-release.apk --package com.taugustincst.bubblepop
+        run: node tools/check-apk.js android/play/build/outputs/apk/release/play-release.apk --package com.taugustincst.bubblepopkids
       - name: Publish the release
         if: env.ANDROID_UPLOAD_KEYSTORE != ''
         run: |
